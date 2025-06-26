@@ -7,6 +7,11 @@ import pdfplumber
 import pandas as pd
 
 from helpers import parser
+from utils.validaciones import (
+    validar_base64,
+    validar_claves_obligatorias,
+    validar_extension_pdf,
+)
 
 app = Flask(__name__)
 
@@ -14,10 +19,21 @@ app = Flask(__name__)
 @app.route("/convertir_pdf", methods=["POST"])
 def convertir_pdf():
     data = request.get_json(force=True)
-    nombre_archivo = data.get("nombre_archivo", "temp.pdf")
+
+    valido, error = validar_claves_obligatorias(data)
+    if not valido:
+        return jsonify({"error": error}), 400
+
+    nombre_archivo = data.get("nombre_archivo")
     contenido_b64 = data.get("contenido_base64")
-    if not contenido_b64:
-        return jsonify({"error": "contenido_base64 requerido"}), 400
+
+    valido, error = validar_extension_pdf(nombre_archivo)
+    if not valido:
+        return jsonify({"error": error}), 400
+
+    valido, error = validar_base64(contenido_b64)
+    if not valido:
+        return jsonify({"error": error}), 400
 
     # Guardar PDF temporalmente
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
