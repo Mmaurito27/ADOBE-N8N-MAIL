@@ -1,5 +1,8 @@
 # Logs
 logs
+!logs/
+!logs/logger.py
+!logs/__init__.py
 *.log
 npm-debug.log*
 yarn-debug.log*
