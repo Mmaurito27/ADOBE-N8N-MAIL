@@ -1,0 +1,193 @@
+{
+  "name": "Flujo PDF Mail",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "downloadAttachments": true,
+        "options": {}
+      },
+      "name": "Leer Mail",
+      "type": "n8n-nodes-base.imap",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "credentials": {
+        "imap": {
+          "id": "1",
+          "name": "Cuenta IMAP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$binary.attachment_0.mimeType}}",
+              "operation": "contains",
+              "value2": "pdf"
+            }
+          ]
+        }
+      },
+      "name": "Filtrar PDF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [250, 0]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "fields": {
+          "string": [
+            {
+              "name": "nombre_archivo",
+              "value": "={{$binary.attachment_0.fileName}}"
+            },
+            {
+              "name": "contenido_base64",
+              "value": "={{$binary.attachment_0.data}}"
+            }
+          ]
+        }
+      },
+      "name": "Preparar Datos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "url": "http://localhost:5000/convertir_pdf",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{\n  \"nombre_archivo\": \"={{$json.nombre_archivo}}\",\n  \"contenido_base64\": \"={{$json.contenido_base64}}\"\n}"
+      },
+      "name": "Enviar a API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [750, 0]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "fields": {
+          "string": [
+            {
+              "name": "csv",
+              "value": "={{$json.csv}}"
+            },
+            {
+              "name": "texto_extraido",
+              "value": "={{$json.texto_extraido}}"
+            },
+            {
+              "name": "nombre_archivo",
+              "value": "={{$json.nombre_archivo}}"
+            }
+          ]
+        }
+      },
+      "name": "Registrar Resultado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "operation": "dataToBinary",
+        "sourceKey": "csv",
+        "binaryPropertyName": "csv_file",
+        "options": {
+          "fileName": "={{$json.nombre_archivo.replace('.pdf','.csv')}}"
+        }
+      },
+      "name": "Convertir CSV a Binario",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "typeVersion": 1,
+      "position": [1250, 0]
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/{{ $json.nombre_archivo.replace('.pdf','.csv') }}",
+        "dataPropertyName": "csv_file"
+      },
+      "name": "Guardar CSV",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1500, 0]
+    }
+  ],
+  "connections": {
+    "Leer Mail": {
+      "main": [
+        [
+          {
+            "node": "Filtrar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar PDF": {
+      "main": [
+        [
+          {
+            "node": "Preparar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Preparar Datos": {
+      "main": [
+        [
+          {
+            "node": "Enviar a API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar a API": {
+      "main": [
+        [
+          {
+            "node": "Registrar Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Resultado": {
+      "main": [
+        [
+          {
+            "node": "Convertir CSV a Binario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir CSV a Binario": {
+      "main": [
+        [
+          {
+            "node": "Guardar CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false
+}
